@@ -1,0 +1,105 @@
+cat > app/templates/login.html << 'EOF'
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoVault — Authentification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #020408; --bg-secondary: #080d14; --accent-cyan: #00f5ff; --accent-green: #00ff88; --accent-red: #ff2d55; --text-primary: #e2e8f0; --text-secondary: #64748b; --border: #1e3a5f; --glow-cyan: 0 0 30px #00f5ff44; --glow-green: 0 0 20px #00ff8844; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Rajdhani', sans-serif; background: var(--bg-primary); color: var(--text-primary); height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .bg-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px); background-size: 60px 60px; animation: gridMove 20s linear infinite; }
+        @keyframes gridMove { from { transform: translateY(0); } to { transform: translateY(60px); } }
+        .scanlines { position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,0.012) 2px, rgba(0,245,255,0.012) 4px); pointer-events: none; }
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: float 8s ease-in-out infinite; }
+        .orb-1 { width: 400px; height: 400px; background: var(--accent-cyan); top: -100px; left: -100px; }
+        .orb-2 { width: 300px; height: 300px; background: #0066ff; bottom: -50px; right: -50px; animation-delay: -4s; }
+        @keyframes float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-30px) scale(1.05); } }
+        .login-wrap { position: relative; z-index: 10; width: 420px; }
+        .login-header { text-align: center; margin-bottom: 40px; }
+        .login-logo { font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 900; color: var(--accent-cyan); text-shadow: var(--glow-cyan); letter-spacing: 4px; margin-bottom: 8px; }
+        .login-logo span { display: inline-block; animation: blink 1.5s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .login-sub { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--text-secondary); letter-spacing: 4px; text-transform: uppercase; }
+        .login-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 0 60px rgba(0,245,255,0.08), 0 20px 60px rgba(0,0,0,0.5); }
+        .login-card-header { padding: 16px 24px; background: rgba(0,245,255,0.04); border-bottom: 1px solid var(--border); font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-secondary); letter-spacing: 3px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+        .dot-green { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); box-shadow: var(--glow-green); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .login-body { padding: 32px 28px; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; letter-spacing: 2px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; }
+        .form-control { width: 100%; padding: 12px 16px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-family: 'Share Tech Mono', monospace; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+        .form-control:focus { border-color: var(--accent-cyan); box-shadow: 0 0 0 2px rgba(0,245,255,0.1); }
+        .btn-login { width: 100%; padding: 14px; background: var(--accent-cyan); color: var(--bg-primary); border: none; border-radius: 6px; font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700; letter-spacing: 3px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; margin-top: 8px; }
+        .btn-login:hover { box-shadow: var(--glow-cyan); transform: translateY(-1px); }
+        .alert-error { padding: 10px 14px; background: rgba(255,45,85,0.1); border: 1px solid rgba(255,45,85,0.3); border-radius: 6px; color: var(--accent-red); font-family: 'Share Tech Mono', monospace; font-size: 0.78rem; margin-bottom: 20px; }
+        .login-footer { text-align: center; margin-top: 24px; font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-secondary); }
+        .typing-effect { overflow: hidden; white-space: nowrap; border-right: 2px solid var(--accent-cyan); animation: typing 3s steps(40) infinite alternate, blink-cursor 0.75s step-end infinite; font-size: 0.7rem; color: var(--text-secondary); font-family: 'Share Tech Mono', monospace; }
+        @keyframes typing { from { width: 0; } to { width: 100%; } }
+        @keyframes blink-cursor { 0%, 100% { border-color: var(--accent-cyan); } 50% { border-color: transparent; } }
+    </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="scanlines"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="login-wrap">
+    <div class="login-header">
+        <div class="login-logo">⬡ CRYPTOVAULT<span>_</span></div>
+        <div class="login-sub">Système de sécurité — Accès restreint</div>
+    </div>
+    <div class="login-card">
+        <div class="login-card-header">
+            <div class="dot-green"></div>
+            AUTHENTIFICATION REQUISE
+        </div>
+        <div class="login-body">
+            {% if error %}<div class="alert-error">⚠ {{ error }}</div>{% endif %}
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Identifiant</label>
+                    <input type="text" class="form-control" id="username" placeholder="username" autocomplete="off" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Mot de passe</label>
+                    <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-login">◈ AUTHENTIFIER</button>
+            </form>
+        </div>
+    </div>
+    <div class="login-footer">
+        <div class="typing-effect">AES-256-GCM • HKDF • RBAC • HMAC-SHA256</div>
+    </div>
+</div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.textContent = '◈ VÉRIFICATION...';
+    btn.disabled = true;
+    const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        })
+    });
+    if (res.ok) {
+        btn.textContent = '✓ ACCÈS AUTORISÉ';
+        btn.style.background = '#00ff88';
+        setTimeout(() => window.location.href = '/dashboard', 600);
+    } else {
+        btn.textContent = '✗ ACCÈS REFUSÉ';
+        btn.style.background = '#ff2d55';
+        setTimeout(() => { btn.textContent = '◈ AUTHENTIFIER'; btn.style.background = ''; btn.disabled = false; }, 1500);
+    }
+});
+</script>
+</body>
+</html>
+EOF

@@ -1,0 +1,128 @@
+cat > app/templates/logs.html << 'EOF'
+{% extends "base.html" %}
+{% block title %}Journaux — CryptoVault{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div class="page-title">▤ JOURNAUX D'ACCÈS</div>
+    <div class="status-dot"><div class="dot"></div>SIGNÉS HMAC-SHA256</div>
+</div>
+<div class="content">
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-body" style="padding:16px 20px">
+            <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+                <div style="flex:1;min-width:150px">
+                    <label class="form-label">Filtrer par action</label>
+                    <select class="form-control" id="filterAction" onchange="filterLogs()">
+                        <option value="">Toutes</option>
+                        <option value="READ">READ</option>
+                        <option value="WRITE">WRITE</option>
+                        <option value="DENIED">DENIED</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:150px">
+                    <label class="form-label">Filtrer par table</label>
+                    <select class="form-control" id="filterTable" onchange="filterLogs()">
+                        <option value="">Toutes</option>
+                        <option value="clients">clients</option>
+                        <option value="users">users</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:150px">
+                    <label class="form-label">Rechercher</label>
+                    <input type="text" class="form-control" id="filterSearch" placeholder="colonne, user..." oninput="filterLogs()">
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="loadLogs()">↺ ACTUALISER</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px">
+        <div class="stat-card" style="border-color:rgba(0,255,136,0.3)">
+            <div class="stat-label">READ</div>
+            <div class="stat-value" id="countRead" style="color:var(--accent-green)">—</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(0,245,255,0.3)">
+            <div class="stat-label">WRITE</div>
+            <div class="stat-value" id="countWrite" style="color:var(--accent-cyan)">—</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(255,45,85,0.3)">
+            <div class="stat-label">DENIED</div>
+            <div class="stat-value" id="countDenied" style="color:var(--accent-red)">—</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">▤ Journal complet</div>
+            <span id="logCount" style="font-family:'Share Tech Mono',monospace;font-size:0.75rem;color:var(--text-secondary)">— entrées</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Action</th><th>Table</th><th>Colonne</th><th>User ID</th><th>Horodatage</th><th>Intégrité</th></tr>
+                </thead>
+                <tbody id="logsTable">
+                    <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:30px">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let allLogs = [];
+
+async function loadLogs() {
+    const res = await apiCall('/api/logs');
+    if (!res.ok) {
+        document.getElementById('logsTable').innerHTML =
+            '<tr><td colspan="7" style="text-align:center;color:var(--accent-red);padding:30px">⚠ Permission refusée</td></tr>';
+        return;
+    }
+    allLogs = res.data;
+    document.getElementById('countRead').textContent   = allLogs.filter(l => l.action === 'READ').length;
+    document.getElementById('countWrite').textContent  = allLogs.filter(l => l.action === 'WRITE').length;
+    document.getElementById('countDenied').textContent = allLogs.filter(l => l.action === 'DENIED').length;
+    filterLogs();
+}
+
+function filterLogs() {
+    const action = document.getElementById('filterAction').value;
+    const table  = document.getElementById('filterTable').value;
+    const search = document.getElementById('filterSearch').value.toLowerCase();
+    let filtered = allLogs.filter(l => {
+        if (action && l.action !== action) return false;
+        if (table  && l.table  !== table)  return false;
+        if (search && !l.colonne.includes(search) && !String(l.user_id).includes(search)) return false;
+        return true;
+    });
+    document.getElementById('logCount').textContent = `${filtered.length} entrée${filtered.length > 1 ? 's' : ''}`;
+    renderLogs(filtered);
+}
+
+function renderLogs(logs) {
+    const tbody = document.getElementById('logsTable');
+    if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:30px">Aucun log trouvé</td></tr>';
+        return;
+    }
+    tbody.innerHTML = logs.map(l => {
+        const actionClass = { READ: 'badge-read', WRITE: 'badge-write', DENIED: 'badge-denied' }[l.action] || '';
+        return `
+            <tr>
+                <td class="mono" style="color:var(--text-secondary)">#${l.id}</td>
+                <td><span class="badge ${actionClass}">${l.action}</span></td>
+                <td class="mono" style="color:var(--accent-cyan)">${l.table}</td>
+                <td class="mono">${l.colonne}</td>
+                <td class="mono" style="color:var(--text-secondary)">user#${l.user_id}</td>
+                <td class="mono" style="font-size:0.75rem;color:var(--text-secondary)">${l.timestamp.replace('T',' ').slice(0,19)}</td>
+                <td><span class="badge badge-success">✓ VALIDE</span></td>
+            </tr>`;
+    }).join('');
+}
+
+loadLogs();
+</script>
+{% endblock %}
+EOF

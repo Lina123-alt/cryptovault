@@ -1,0 +1,149 @@
+cat > app/templates/keys.html << 'EOF'
+{% extends "base.html" %}
+{% block title %}Clés — CryptoVault{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div class="page-title">⬡ GESTION DES CLÉS</div>
+    <div class="status-dot"><div class="dot"></div>HKDF-SHA256 ACTIF</div>
+</div>
+<div class="content">
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title">⬡ Architecture de dérivation HKDF</div></div>
+        <div class="card-body">
+            <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;padding:10px 0">
+                <div style="text-align:center;padding:16px 24px;background:var(--bg-primary);border:1px solid var(--accent-cyan);border-radius:8px;box-shadow:0 0 20px #00f5ff44">
+                    <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--text-secondary);letter-spacing:2px;margin-bottom:4px">MASTER KEY</div>
+                    <div style="font-family:'Orbitron',monospace;font-size:0.9rem;color:var(--accent-cyan)">256 bits</div>
+                </div>
+                <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--text-secondary);letter-spacing:1px">── HKDF-SHA256 ──▶</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+                    <div style="text-align:center;padding:12px 18px;background:rgba(191,90,242,0.1);border:1px solid rgba(191,90,242,0.4);border-radius:8px">
+                        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--text-secondary);margin-bottom:4px">ROLE KEY</div>
+                        <div style="font-family:'Orbitron',monospace;font-size:0.85rem;color:#bf5af2">ADMIN</div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:2px">+ sel unique</div>
+                    </div>
+                    <div style="text-align:center;padding:12px 18px;background:rgba(0,245,255,0.1);border:1px solid rgba(0,245,255,0.3);border-radius:8px">
+                        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--text-secondary);margin-bottom:4px">ROLE KEY</div>
+                        <div style="font-family:'Orbitron',monospace;font-size:0.85rem;color:var(--accent-cyan)">OPÉRATEUR</div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:2px">+ sel unique</div>
+                    </div>
+                    <div style="text-align:center;padding:12px 18px;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.3);border-radius:8px">
+                        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--text-secondary);margin-bottom:4px">ROLE KEY</div>
+                        <div style="font-family:'Orbitron',monospace;font-size:0.85rem;color:var(--text-secondary)">LECTEUR</div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:2px">+ sel unique</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+            <div class="card-title">⬡ État actuel des clés</div>
+            <button class="btn btn-sm" style="background:transparent;border:1px solid var(--border);color:var(--text-secondary)" onclick="loadKeys()">↺ Actualiser</button>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Rôle</th><th>Version</th><th>Sel</th><th>Créé le</th><th>Algorithme</th>{% if session.role == 'admin' %}<th>Action</th>{% endif %}</tr>
+                </thead>
+                <tbody id="keysTable">
+                    <tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:30px">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if session.role == 'admin' %}
+    <div class="card">
+        <div class="card-header"><div class="card-title" style="color:var(--accent-yellow)">⚡ ROTATION DES CLÉS</div></div>
+        <div class="card-body">
+            <div class="alert alert-info">⚠ La rotation rechiffre toutes les données avec une nouvelle clé dérivée. Aucune perte de données.</div>
+            <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+                <div style="flex:1;min-width:200px">
+                    <label class="form-label">Rôle à faire tourner</label>
+                    <select class="form-control" id="rotateRole">
+                        <option value="admin">Admin</option>
+                        <option value="operateur">Opérateur</option>
+                        <option value="lecteur">Lecteur</option>
+                    </select>
+                </div>
+                <button class="btn btn-warning" onclick="confirmRotation()">⚡ LANCER LA ROTATION</button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-error">⚠ La rotation des clés est réservée aux administrateurs.</div>
+    {% endif %}
+</div>
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title" style="color:var(--accent-yellow)">⚡ CONFIRMER LA ROTATION</div>
+            <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-error">Cette opération va régénérer la clé du rôle <strong id="confirmRoleName"></strong> et rechiffrer toutes les données associées.</div>
+            <p style="color:var(--text-secondary);font-size:0.9rem">Confirmez-vous la rotation ?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" onclick="closeModal('confirmModal')">Annuler</button>
+            <button class="btn btn-warning" onclick="doRotation()">⚡ CONFIRMER</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const isAdmin = "{{ session.role }}" === "admin";
+
+async function loadKeys() {
+    const res = await apiCall('/api/keys');
+    if (!res.ok) {
+        document.getElementById('keysTable').innerHTML =
+            '<tr><td colspan="6" style="text-align:center;color:var(--accent-red);padding:30px">⚠ Permission refusée</td></tr>';
+        return;
+    }
+    document.getElementById('keysTable').innerHTML = res.data.map(k => {
+        const roleBadge = { admin: 'badge-admin', operateur: 'badge-operateur', lecteur: 'badge-lecteur' }[k.role];
+        return `
+            <tr>
+                <td><span class="badge ${roleBadge}">${k.role}</span></td>
+                <td><span class="badge badge-success">v${k.version}</span></td>
+                <td class="mono" style="font-size:0.75rem;color:var(--text-secondary)">●●●●●●●● [MASQUÉ]</td>
+                <td class="mono" style="font-size:0.75rem;color:var(--text-secondary)">${k.created_at.slice(0,19).replace('T',' ')}</td>
+                <td class="mono" style="font-size:0.75rem;color:var(--accent-green)">HKDF-SHA256 / AES-256-GCM</td>
+                ${isAdmin ? `<td><button class="btn btn-warning btn-sm" onclick="quickRotate('${k.role}')">⚡ Tourner</button></td>` : ''}
+            </tr>`;
+    }).join('');
+}
+
+function confirmRotation() {
+    const role = document.getElementById('rotateRole').value;
+    document.getElementById('confirmRoleName').textContent = role.toUpperCase();
+    document.getElementById('confirmModal').classList.add('open');
+}
+
+function quickRotate(role) {
+    document.getElementById('rotateRole').value = role;
+    confirmRotation();
+}
+
+async function doRotation() {
+    const role = document.getElementById('rotateRole').value;
+    closeModal('confirmModal');
+    showToast(`Rotation en cours pour '${role}'...`, 'info');
+    const res = await apiCall(`/api/keys/rotate/${role}`, 'POST');
+    if (res.ok) {
+        showToast(`Rotation réussie pour '${role}'`, 'success');
+        loadKeys();
+    } else {
+        showToast(res.data.error || 'Erreur lors de la rotation', 'error');
+    }
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+loadKeys();
+</script>
+{% endblock %}
+EOF

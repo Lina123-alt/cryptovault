@@ -1,0 +1,130 @@
+cat > app/templates/clients.html << 'EOF'
+{% extends "base.html" %}
+{% block title %}Clients — CryptoVault{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div class="page-title">◉ GESTION DES CLIENTS</div>
+    <div style="display:flex;gap:10px;align-items:center">
+        <div class="status-dot"><div class="dot"></div>DONNÉES CHIFFRÉES AES-256-GCM</div>
+        {% if session.role in ['admin', 'operateur'] %}
+        <button class="btn btn-primary" onclick="openModal('addClientModal')">+ NOUVEAU CLIENT</button>
+        {% endif %}
+    </div>
+</div>
+<div class="content">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">◉ Liste des clients</div>
+            <input type="text" class="form-control" style="width:200px;padding:6px 12px;font-size:0.78rem" placeholder="Rechercher..." id="searchInput" oninput="filterClients()">
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Nom</th><th>Email</th><th>Carte de crédit</th><th>Téléphone</th><th>Créé le</th></tr>
+                </thead>
+                <tbody id="clientsTable">
+                    <tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:30px">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="addClientModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">+ NOUVEAU CLIENT</div>
+            <button class="modal-close" onclick="closeModal('addClientModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Nom complet</label>
+                <input type="text" class="form-control" id="c_nom" placeholder="Jean Dupont">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="c_email" placeholder="jean@example.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Numéro de carte 🔒 CHIFFRÉ</label>
+                <input type="text" class="form-control" id="c_carte" placeholder="4111-1111-1111-1111">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Téléphone 🔒 CHIFFRÉ</label>
+                <input type="text" class="form-control" id="c_tel" placeholder="0612345678">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" onclick="closeModal('addClientModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="addClient()">◈ CHIFFRER & ENREGISTRER</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let allClients = [];
+
+async function loadClients() {
+    const res = await apiCall('/api/clients');
+    if (!res.ok) { showToast('Erreur de chargement', 'error'); return; }
+    allClients = res.data;
+    renderClients(allClients);
+}
+
+function renderClients(clients) {
+    const tbody = document.getElementById('clientsTable');
+    if (clients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:30px">Aucun client</td></tr>';
+        return;
+    }
+    tbody.innerHTML = clients.map(c => {
+        const carte = c.carte_credit === '*** MASQUÉ ***'
+            ? `<span class="masked">●●●● ●●●● ●●●● ●●●●</span>`
+            : `<span class="revealed">${c.carte_credit}</span>`;
+        const tel = c.telephone === '*** MASQUÉ ***'
+            ? `<span class="masked">●●●●●●●●●●</span>`
+            : `<span class="revealed">${c.telephone}</span>`;
+        return `
+            <tr>
+                <td class="mono" style="color:var(--text-secondary)">#${c.id}</td>
+                <td style="font-weight:600">${c.nom}</td>
+                <td class="mono" style="font-size:0.82rem">${c.email}</td>
+                <td>${carte}</td>
+                <td>${tel}</td>
+                <td class="mono" style="font-size:0.75rem;color:var(--text-secondary)">${(c.created_at||'').slice(0,10)}</td>
+            </tr>`;
+    }).join('');
+}
+
+function filterClients() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    renderClients(allClients.filter(c => c.nom.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)));
+}
+
+async function addClient() {
+    const body = {
+        nom: document.getElementById('c_nom').value,
+        email: document.getElementById('c_email').value,
+        carte_credit: document.getElementById('c_carte').value,
+        telephone: document.getElementById('c_tel').value
+    };
+    if (!body.nom || !body.email || !body.carte_credit || !body.telephone) {
+        showToast('Tous les champs sont requis', 'error'); return;
+    }
+    const res = await apiCall('/api/clients', 'POST', body);
+    if (res.ok) {
+        showToast('Client chiffré et enregistré', 'success');
+        closeModal('addClientModal');
+        loadClients();
+    } else {
+        showToast(res.data.error || 'Erreur', 'error');
+    }
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+loadClients();
+</script>
+{% endblock %}
+EOF

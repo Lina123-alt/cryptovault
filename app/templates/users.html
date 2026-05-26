@@ -1,0 +1,134 @@
+cat > app/templates/users.html << 'EOF'
+{% extends "base.html" %}
+{% block title %}Utilisateurs — CryptoVault{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div class="page-title">◎ GESTION DES UTILISATEURS</div>
+    {% if session.role == 'admin' %}
+    <button class="btn btn-primary" onclick="openModal('addUserModal')">+ NOUVEL UTILISATEUR</button>
+    {% endif %}
+</div>
+<div class="content">
+    <div class="grid-3" style="margin-bottom:20px">
+        <div class="stat-card" style="border-color:rgba(191,90,242,0.3)">
+            <div class="stat-label">Admins</div>
+            <div class="stat-value" id="countAdmin" style="color:#bf5af2">—</div>
+            <div class="stat-sub">Accès total</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(0,245,255,0.3)">
+            <div class="stat-label">Opérateurs</div>
+            <div class="stat-value" id="countOp" style="color:var(--accent-cyan)">—</div>
+            <div class="stat-sub">Lecture + écriture</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(100,116,139,0.3)">
+            <div class="stat-label">Lecteurs</div>
+            <div class="stat-value" id="countLect" style="color:var(--text-secondary)">—</div>
+            <div class="stat-sub">Lecture seule</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><div class="card-title">◎ Comptes utilisateurs</div></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Utilisateur</th><th>Rôle</th><th>Statut</th><th>Créé le</th><th>Permissions</th></tr>
+                </thead>
+                <tbody id="usersTable">
+                    <tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:30px">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="addUserModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">+ NOUVEL UTILISATEUR</div>
+            <button class="modal-close" onclick="closeModal('addUserModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Nom d'utilisateur</label>
+                <input type="text" class="form-control" id="u_username" placeholder="username">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mot de passe</label>
+                <input type="password" class="form-control" id="u_password" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Rôle</label>
+                <select class="form-control" id="u_role">
+                    <option value="lecteur">Lecteur</option>
+                    <option value="operateur">Opérateur</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" onclick="closeModal('addUserModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="addUser()">◈ CRÉER</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const PERMISSIONS_MAP = {
+    admin:     ['read','write','decrypt','delete','logs','rotate'],
+    operateur: ['read','write','decrypt','logs'],
+    lecteur:   ['read']
+};
+
+async function loadUsers() {
+    const res = await apiCall('/api/users');
+    if (!res.ok) {
+        document.getElementById('usersTable').innerHTML =
+            '<tr><td colspan="6" style="text-align:center;color:var(--accent-red);padding:30px">⚠ Permission refusée</td></tr>';
+        return;
+    }
+    const users = res.data;
+    document.getElementById('countAdmin').textContent = users.filter(u => u.role === 'admin').length;
+    document.getElementById('countOp').textContent    = users.filter(u => u.role === 'operateur').length;
+    document.getElementById('countLect').textContent  = users.filter(u => u.role === 'lecteur').length;
+
+    document.getElementById('usersTable').innerHTML = users.map(u => {
+        const roleBadge = { admin: 'badge-admin', operateur: 'badge-operateur', lecteur: 'badge-lecteur' }[u.role] || 'badge-lecteur';
+        const perms = (PERMISSIONS_MAP[u.role] || []).map(p =>
+            `<span class="badge" style="background:rgba(0,245,255,0.08);color:var(--text-secondary);border:1px solid var(--border);font-size:0.6rem;margin:1px">${p}</span>`
+        ).join(' ');
+        return `
+            <tr>
+                <td class="mono" style="color:var(--text-secondary)">#${u.id}</td>
+                <td style="font-weight:600;font-family:'Share Tech Mono',monospace">${u.username}</td>
+                <td><span class="badge ${roleBadge}">${u.role}</span></td>
+                <td><span class="badge ${u.actif ? 'badge-success' : 'badge-denied'}">${u.actif ? '● ACTIF' : '○ INACTIF'}</span></td>
+                <td class="mono" style="font-size:0.75rem;color:var(--text-secondary)">${(u.created_at||'').slice(0,10)}</td>
+                <td>${perms}</td>
+            </tr>`;
+    }).join('');
+}
+
+async function addUser() {
+    const body = {
+        username: document.getElementById('u_username').value,
+        password: document.getElementById('u_password').value,
+        role:     document.getElementById('u_role').value
+    };
+    if (!body.username || !body.password) { showToast('Tous les champs sont requis', 'error'); return; }
+    const res = await apiCall('/api/users', 'POST', body);
+    if (res.ok) {
+        showToast(`Utilisateur '${body.username}' créé`, 'success');
+        closeModal('addUserModal');
+        loadUsers();
+    } else {
+        showToast(res.data.error || 'Erreur', 'error');
+    }
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+loadUsers();
+</script>
+{% endblock %}
+EOF
