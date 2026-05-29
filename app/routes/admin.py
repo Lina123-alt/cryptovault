@@ -4,17 +4,17 @@ from app.models.models import User, Client, RoleKey, AccessLog
 from app.rbac import RBACManager, has_permission
 from app.crypto import encrypt, decrypt, hmac_hash, KeyRotationManager
 from app.logs import AuditLogger
+import os
 
 admin_bp = Blueprint('admin', __name__)
 
-MASTER_KEY = b'0' * 32
-SIGNING_KEY = b'signing_secret_key_32_bytes_long'
+MASTER_KEY  = bytes.fromhex(os.environ.get('MASTER_KEY', '0' * 64))
+SIGNING_KEY = bytes.fromhex(os.environ.get('SIGNING_KEY', '0' * 64))
 
-rbac = RBACManager(MASTER_KEY)
+rbac    = RBACManager(MASTER_KEY)
 rotator = KeyRotationManager(MASTER_KEY)
-logger = AuditLogger(SIGNING_KEY)
-db = DBSession()
-
+logger  = AuditLogger(SIGNING_KEY)
+db      = DBSession()
 
 def current_user():
     uid = session.get('user_id')
