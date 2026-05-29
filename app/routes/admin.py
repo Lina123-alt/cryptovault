@@ -87,21 +87,16 @@ def list_clients():
                  'created_at': str(c.created_at)}
         if has_permission(user.role, 'clients', 'decrypt'):
             key = rbac.get_role_key(user.role)
-            try:
-                entry['carte_credit'] = decrypt(c.carte_credit, key)
-                entry['telephone']    = decrypt(c.telephone, key)
-                logger.log(user.id, 'clients', 'carte_credit', 'READ')
-                logger.log(user.id, 'clients', 'telephone', 'READ')
-            except Exception:
-                entry['carte_credit'] = '*** erreur déchiffrement ***'
-                entry['telephone']    = '*** erreur déchiffrement ***'
-        else:
-            entry['carte_credit'] = '*** MASQUÉ ***'
-            entry['telephone']    = '*** MASQUÉ ***'
-            logger.log(user.id, 'clients', 'carte_credit', 'DENIED')
-        result.append(entry)
-    return jsonify(result)
-
+try:
+    entry['carte_credit'] = decrypt(c.carte_credit, key)
+    entry['telephone']    = decrypt(c.telephone, key)
+    logger.log(user.id, 'clients', 'carte_credit', 'READ')
+    logger.log(user.id, 'clients', 'telephone', 'READ')
+except Exception:
+    entry['carte_credit'] = '*** erreur déchiffrement ***'
+    entry['telephone']    = '*** erreur déchiffrement ***'
+    logger.log(user.id, 'clients', 'carte_credit', 'READ')
+    logger.log(user.id, 'clients', 'telephone', 'READ')
 
 @admin_bp.route('/clients', methods=['POST'])
 def add_client():
