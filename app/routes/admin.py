@@ -207,7 +207,7 @@ def rotate_keys(role):
     if not user:
         return jsonify({'error': 'Non authentifié'}), 401
 
-    if not has_permission(user.role, 'keys', 'write'):
+    if not has_permission(user.role, 'keys', 'rotate'):
         return jsonify({'error': 'Permission refusée'}), 403
 
     try:
