@@ -211,7 +211,7 @@ def rotate_keys(role):
         return jsonify({'error': 'Permission refusée'}), 403
 
     try:
-        rotator.rotate_role_key(role)
+        rotator.rotate_key(role, ['carte_credit', 'telephone'])
 
         return jsonify({
             'message': f'Clé du rôle {role} tournée avec succès'
