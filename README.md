@@ -35,13 +35,13 @@ CryptoVault est une application de sécurité avancée qui implémente le chiffr
 - **Gunicorn** — Serveur WSGI production
 - **Railway** — Déploiement cloud
 
-## 🏗️ Architecture
+##  Architecture
 
 ##  Déploiement
 
 L'application est déployée sur Railway avec CI/CD automatique depuis GitHub.
 
-🌐 **Site live** : [web-production-04013.up.railway.app](https://web-production-04013.up.railway.app)
+ **Site live** : [web-production-04013.up.railway.app](https://web-production-04013.up.railway.app)
 
 ##  Tests
 
@@ -62,6 +62,6 @@ pytest tests/test_integration.py -v
 - Sessions sécurisées (HttpOnly, Secure, SameSite)
 - Clés cryptographiques dans les variables d'environnement Railway
 
-## 👩‍💻 Auteure
+##  Auteure
 
 **Linaaaaa** — Étudiante en cybersécurité — ENSAK 2025-2026
