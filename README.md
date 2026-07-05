@@ -25,7 +25,7 @@ CryptoVault est une application de sécurité avancée qui implémente le chiffr
 | **Opérateur** | Lire, écrire, déchiffrer, voir les logs |
 | **Lecteur** | Lire uniquement — données masquées |
 
-## 🛠️ Technologies
+##  Technologies
 
 - **Python 3.13** — Langage principal
 - **Flask** — Framework web et API REST
